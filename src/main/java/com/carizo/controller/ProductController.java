@@ -1,7 +1,6 @@
 package com.carizo.controller;
 
 import com.carizo.model.Product;
-
 import com.carizo.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -12,11 +11,20 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
+
     @Autowired
     private ProductService productService;
 
     @GetMapping
-    public List<Product> getAllProducts() {
+    public List<Product> getAllProducts(
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Boolean inStock,
+            @RequestParam(required = false) String sort // "asc" or "desc"
+    ) {
+        if (minPrice != null || maxPrice != null || inStock != null || sort != null) {
+            return productService.filterProducts(minPrice, maxPrice, inStock, sort);
+        }
         return productService.getAllProducts();
     }
 
@@ -39,37 +47,45 @@ public class ProductController {
     public List<Product> getProductsByCategoryId(@PathVariable Long categoryId) {
         return productService.getProductsByCategoryId(categoryId);
     }
-    
+
     @GetMapping("/search")
     public ResponseEntity<List<Product>> searchProducts(@RequestParam("q") String query) {
         List<Product> results = productService.searchProducts(query);
         return ResponseEntity.ok(results);
     }
-    
- /*// 🔥 New Endpoint to get products by tag
-    @GetMapping("/tag/{tag}")
-    public ResponseEntity<List<Product>> getProductsByTag(@PathVariable String tag) {
-        try {
-            ProductTag productTag = ProductTag.valueOf(tag.toUpperCase());
-            List<Product> products = productService.getProductsByTag(productTag);
-            return ResponseEntity.ok(products);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }*/
-    
+
     @GetMapping("/new-arrivals")
-    public ResponseEntity<List<Product>> getNewArrivals() {
-        List<Product> newArrivals = productService.getNewArrivals();
+    public ResponseEntity<List<Product>> getNewArrivals(
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Boolean inStock,
+            @RequestParam(required = false) String sort
+    ) {
+        List<Product> newArrivals = productService.filterNewArrivals(minPrice, maxPrice, inStock, sort);
         return ResponseEntity.ok(newArrivals);
     }
 
     @GetMapping("/best-sellers")
-    public ResponseEntity<List<Product>> getBestSellers() {
-        List<Product> bestSellers = productService.getBestSellers();
+    public ResponseEntity<List<Product>> getBestSellers(
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Boolean inStock,
+            @RequestParam(required = false) String sort
+    ) {
+        List<Product> bestSellers = productService.filterBestSellers(minPrice, maxPrice, inStock, sort);
         return ResponseEntity.ok(bestSellers);
     }
-
     
+    @GetMapping("/category/{categoryId}/filter")
+    public ResponseEntity<List<Product>> filterProductsByCategory(
+            @PathVariable Long categoryId,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Boolean inStock,
+            @RequestParam(required = false) String sort
+    ) {
+        List<Product> filtered = productService.filterProductsByCategory(categoryId, minPrice, maxPrice, inStock, sort);
+        return ResponseEntity.ok(filtered);
+    }
 
 }
