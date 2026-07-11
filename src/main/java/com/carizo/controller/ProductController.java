@@ -1,12 +1,21 @@
 package com.carizo.controller;
 
-import com.carizo.model.Product;
-import com.carizo.service.ProductService;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import com.carizo.model.Product;
+import com.carizo.service.ProductService;
 
 @RestController
 @RequestMapping("/api/products")
@@ -33,9 +42,23 @@ public class ProductController {
         return productService.getProductById(id);
     }
 
-    @PostMapping
-    public Product addProduct(@RequestBody Product product) {
-        return productService.saveProduct(product);
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Product addProduct(
+            @RequestParam("name") String name,
+            @RequestParam("description") String description,
+            @RequestParam("price") double price,
+            @RequestParam("stock") int stock,
+            @RequestParam("categoryId") Long categoryId,
+            @RequestParam("image") MultipartFile image
+    ) {
+        return productService.saveProductWithImage(
+                name,
+                description,
+                price,
+                stock,
+                categoryId,
+                image
+        );
     }
 
     @DeleteMapping("/{id}")

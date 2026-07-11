@@ -12,15 +12,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
+ 
+ 
 @Service
 public class CategoryService {
 
-    private final String uploadDir = System.getProperty("user.home") + "/uploads/category-images";
+     
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -30,6 +27,9 @@ public class CategoryService {
 
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
     // Get all categories
     public List<Category> getAllCategories() {
@@ -61,20 +61,10 @@ public class CategoryService {
         category.setName(name);
 
         if (imageFile != null && !imageFile.isEmpty()) {
-            try {
-                Path uploadPath = Paths.get(uploadDir);
-                if (!Files.exists(uploadPath)) {
-                    Files.createDirectories(uploadPath);
-                }
 
-                String filename = System.currentTimeMillis() + "_" + imageFile.getOriginalFilename();
-                Path filePath = uploadPath.resolve(filename);
-                imageFile.transferTo(filePath.toFile());
+            String imageUrl = cloudinaryService.uploadFile(imageFile, "category-images");
 
-                category.setImageUrl("/uploads/category-images/" + filename);
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to save category image", e);
-            }
+            category.setImageUrl(imageUrl);
         }
 
         return categoryRepository.save(category);

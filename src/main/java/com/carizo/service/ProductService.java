@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,7 +23,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
-
+	
+	@Autowired
+	private CloudinaryService cloudinaryService;
     @Autowired
     private ProductRepository productRepository;
 
@@ -150,6 +153,41 @@ public class ProductService {
         }
 
         return filtered;
+    }
+    
+    public Product saveProductWithImage(
+            String name,
+            String description,
+            double price,
+            int stock,
+            Long categoryId,
+            MultipartFile image
+    ) {
+
+        Product product = new Product();
+
+        product.setName(name);
+        product.setDescription(description);
+        product.setPrice(price);
+        product.setStock(stock);
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        product.setCategory(category);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = auth.getName();
+
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+
+        product.setUser(currentUser);
+
+        String imageUrl = cloudinaryService.uploadFile(image, "product-images");
+        product.setImageUrl(imageUrl);
+
+        return productRepository.save(product);
     }
 
 }

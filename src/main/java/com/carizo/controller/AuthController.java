@@ -3,6 +3,7 @@ package com.carizo.controller;
 import com.carizo.dto.AuthRequest;
 import com.carizo.dto.AuthResponse;
 import com.carizo.model.User;
+import com.carizo.service.CloudinaryService;
 import com.carizo.service.UserService;
 import com.carizo.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,19 +17,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
-    private static final String UPLOAD_DIR = "uploads/profile-images/";
 
     @Autowired
     private UserService userService;
@@ -41,6 +36,9 @@ public class AuthController {
 
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
     // 1. Get profile
     @GetMapping("/profile")
@@ -56,22 +54,17 @@ public class AuthController {
             @RequestPart("user") User updatedUser,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) throws IOException {
+
         String email = userDetails.getUsername();
         User existingUser = userService.getUserByEmail(email);
 
         existingUser.setUsername(updatedUser.getUsername());
         existingUser.setEmail(updatedUser.getEmail());
 
-        // Handle image upload if present
+        // Upload profile image to Cloudinary
         if (image != null && !image.isEmpty()) {
-            File uploadDir = new File(UPLOAD_DIR);
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
-            }
-            String fileName = System.currentTimeMillis() + "_" + image.getOriginalFilename();
-            Path imagePath = Paths.get(UPLOAD_DIR + fileName);
-            Files.write(imagePath, image.getBytes());
-            existingUser.setProfileImageUrl("/" + UPLOAD_DIR + fileName);
+            String imageUrl = cloudinaryService.uploadFile(image, "profile-images");
+            existingUser.setProfileImageUrl(imageUrl);
         }
 
         User updated = userService.updateUser(existingUser);
@@ -84,6 +77,7 @@ public class AuthController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("user", updated);
+
         if (newToken != null) {
             response.put("token", newToken);
         }
@@ -101,16 +95,7 @@ public class AuthController {
         String imageUrl = null;
 
         if (image != null && !image.isEmpty()) {
-            File uploadDir = new File(UPLOAD_DIR);
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
-            }
-
-            String fileName = System.currentTimeMillis() + "_" + image.getOriginalFilename();
-            Path imagePath = Paths.get(UPLOAD_DIR + fileName);
-            Files.write(imagePath, image.getBytes());
-
-            imageUrl = "/" + UPLOAD_DIR + fileName;
+            imageUrl = cloudinaryService.uploadFile(image, "profile-images");
         }
 
         return userService.registerUser(user, imageUrl);
@@ -119,9 +104,11 @@ public class AuthController {
     // 4. Login endpoint returning JWT token, role, username, and profile image url
     @PostMapping("/login")
     public AuthResponse login(@RequestBody AuthRequest authRequest) {
+
         Authentication authentication = authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        authRequest.getEmail(), authRequest.getPassword()
+                        authRequest.getEmail(),
+                        authRequest.getPassword()
                 )
         );
 
@@ -129,6 +116,12 @@ public class AuthController {
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
 
-        return new AuthResponse(token, user.getRole(), user.getUsername(), user.getProfileImageUrl(), user.getId() );
+        return new AuthResponse(
+                token,
+                user.getRole(),
+                user.getUsername(),
+                user.getProfileImageUrl(),
+                user.getId()
+        );
     }
 }
