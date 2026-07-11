@@ -1,14 +1,20 @@
-# Step 1: Use Java 17 image
-FROM openjdk:17-jdk-slim
+# Build Stage
+FROM maven:3.9.9-eclipse-temurin-17 AS builder
 
-# Step 2: Set working directory
 WORKDIR /app
 
-# Step 3: Copy the jar file from your target folder
-COPY target/*.jar app.jar
+COPY pom.xml .
+COPY src ./src
 
-# Step 4: Expose the port (8080 is Spring Boot default)
+RUN mvn clean package -DskipTests
+
+# Runtime Stage
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+COPY --from=builder /app/target/*.jar app.jar
+
 EXPOSE 8080
 
-# Step 5: Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
